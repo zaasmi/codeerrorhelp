@@ -5,6 +5,8 @@ Version 8.20 (Unreleased)
 - Improved function name resolving for JavaScript sourcemaps
 
 - Add initial support for Redis Cluster.
+- Support a list of hosts in the ``redis.clusters`` configuration along side
+  the traditional dictionary style configuration.
 
 Schema Changes
 ~~~~~~~~~~~~~~
