@@ -13,7 +13,7 @@ class Email(Model):
     """
     __core__ = True
 
-    email = CIEmailField(_('email address'))
+    email = CIEmailField(_('email address'), unique=True)
 
     class Meta:
         app_label = 'sentry'
