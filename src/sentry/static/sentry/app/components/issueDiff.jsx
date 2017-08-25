@@ -8,14 +8,19 @@ import rawStacktraceContent from './events/interfaces/rawStacktraceContent';
 import '../../less/components/issueDiff.less';
 const IssueDiff = React.createClass({
   propTypes: {
-    baseId: PropTypes.string,
-    targetId: PropTypes.string
+    baseIssueId: PropTypes.string.isRequired,
+    targetIssueId: PropTypes.string.isRequired,
+    baseEventId: PropTypes.string.isRequired,
+    targetEventId: PropTypes.string.isRequired
   },
 
   mixins: [ApiMixin],
 
   getDefaultProps() {
-    return {};
+    return {
+      baseEventId: 'latest',
+      targetEventId: 'latest'
+    };
   },
 
   getInitialState() {
@@ -27,13 +32,13 @@ const IssueDiff = React.createClass({
     };
   },
 
-  componentDidMount() {
-    let {baseId, targetId} = this.props;
+  componentWillMount() {
+    let {baseIssueId, targetIssueId, baseEventId, targetEventId} = this.props;
     Promise.all([
-      import('react-diff'),
-      this.fetchData(baseId),
-      this.fetchData(targetId)
-    ]).then(([Diff, baseEvent, targetEvent]) => {
+      import('./splitDiff'),
+      this.fetchData(baseIssueId, baseEventId),
+      this.fetchData(targetIssueId, targetEventId)
+    ]).then(([{default: Diff}, baseEvent, targetEvent]) => {
       this.setState({
         Diff,
         baseEvent: this.getException(baseEvent),
@@ -51,21 +56,19 @@ const IssueDiff = React.createClass({
     if (!exc || !exc.data) return '';
 
     return exc.data.values
-      .map(value =>
-        rawStacktraceContent(value.stacktrace, event.platform, value).split('\n')
-      )
+      .map(value => rawStacktraceContent(value.stacktrace, event.platform, value))
       .reduce((acc, value) => {
         return acc.concat(value);
       }, []);
   },
 
-  getEndpoint(id) {
-    return `/issues/${id}/events/latest/`;
+  getEndpoint(issueId, eventId) {
+    return `/issues/${issueId}/events/${eventId}/`;
   },
 
-  fetchData(id) {
+  fetchData(issueId, eventId) {
     return new Promise((resolve, reject) => {
-      this.api.request(this.getEndpoint(id), {
+      this.api.request(this.getEndpoint(issueId, eventId), {
         success: data => resolve(data),
         error: err => reject(err)
       });
@@ -74,20 +77,20 @@ const IssueDiff = React.createClass({
 
   render() {
     let {className} = this.props;
-    let cx = classNames('issue-diff', className);
+    let cx = classNames('issue-diff', className, {
+      loading: this.state.loading
+    });
+    let diffReady = !this.state.loading && !!this.state.Diff;
 
-    if (this.state.loading) {
-      return <LoadingIndicator />;
-    }
     return (
       <div className={cx}>
-        {this.state.Diff &&
+        {this.state.loading && <LoadingIndicator />}
+        {diffReady &&
           this.state.baseEvent.map((value, i) => (
             <this.state.Diff
               key={i}
-              inputA={value}
-              inputB={this.state.targetEvent[i] || ''}
-              type="sentences"
+              base={value}
+              target={this.state.targetEvent[i] || ''}
             />
           ))}
       </div>
